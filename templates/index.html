@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Адаптивная генерация палитр</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>Адаптивная генерация цветовой палитры</h1>
+
+  <div id="palette-container"></div>
+
+  <div id="controls">
+    <button onclick="requestNewPalette()">Новая палитра</button>
+    <button onclick="sendFeedback('like')">👍</button>
+    <button onclick="sendFeedback('dislike')">👎</button>
+    <span id="proba-display"></span>
+  </div>
+
+  <form id="upload-form" enctype="multipart/form-data">
+    <input id="image-input" type="file" name="image" accept="image/*" />
+    <button type="submit">Загрузить изображение</button>
+    <button type="button" id="btn-reset">Сбросить изображение</button>
+  </form>
+
+  <div id="uploaded-section" style="display: none;">
+    <h2>Загруженное изображение:</h2>
+    <img id="uploaded-image" style="max-width: 300px;" />
+  </div>
+
+  <h2>Понравившиеся палитры</h2>
+  <div id="liked-palettes"></div>
+  
+  <script id="initial-data" type="application/json">
+  {{ {'palette': initial_palette, 'id': initial_id} | tojson | safe }}
+  </script>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

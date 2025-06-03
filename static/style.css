@@ -1,0 +1,132 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+
+body {
+  background-color: #f3f3f3;
+  font-family: 'Montserrat', sans-serif;
+  color: #212121;
+  text-align: center;
+  padding: 20px;
+  animation: fadeIn 1s ease;
+}
+
+h1 {
+  font-size: 32px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin-top: 30px;
+  margin-bottom: 10px;
+}
+
+button {
+  font-family: 'Montserrat', sans-serif;
+  border: 2px solid #262222;
+  border-radius: 10px;
+  padding: 10px 20px;
+  margin: 5px;
+  cursor: pointer;
+  background-color: white;
+  transition: all 0.3s ease;
+}
+
+button:hover {
+  background-color: #f2f2f2;
+  transform: scale(1.05);
+}
+
+.color-block {
+  width: 120px;
+  height: 120px;
+  border-radius: 20px;
+  margin: 5px;
+  display: inline-block;
+  position: relative;
+  animation: popIn 0.5s ease;
+}
+
+.color-code {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  background-color: rgba(255, 255, 255, 0.6);
+  padding: 2px 5px;
+  border-radius: 5px;
+}
+
+.top-palette, .liked-palette {
+  margin: 20px auto;
+  padding: 10px;
+  animation: fadeIn 0.5s ease;
+  transition: transform 0.3s;
+}
+
+.top-palette:hover, .liked-palette:hover {
+  transform: scale(1.02);
+}
+
+img {
+  border-radius: 10px;
+  transition: transform 0.3s ease;
+}
+
+img:hover {
+  transform: scale(1.03);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+#uploaded-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+#uploaded-image {
+  max-width: 300px;
+  margin-bottom: 10px;
+}
+
+#liked-palettes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+#uploaded-image {
+  display: block;
+  margin: 10px auto;
+  max-width: 300px;
+}
+
+.color-square {
+  width: 80px;
+  height: 80px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.color-square span {
+  font-size: 10px;
+  background-color: rgba(255, 255, 255, 0.7);
+  padding: 2px 4px;
+  border-radius: 5px;
+  margin-bottom: 4px;
+}
