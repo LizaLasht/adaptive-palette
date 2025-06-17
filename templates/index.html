@@ -29,6 +29,20 @@
     <img id="uploaded-image" style="max-width: 300px;" />
   </div>
 
+  <div class="harmony-controls">
+    <label for="baseColorHex">Базовый цвет:</label>
+    <input type="text" id="baseColorHex" value="#FF0000" maxlength="7" />
+    <input type="color" id="baseColorPicker" value="#FF0000" />
+    <label for="schemeSelect">Схема гармонии:</label>
+    <select id="schemeSelect">
+      <option value="analogous">Аналогичная</option>
+      <option value="complementary">Комплементарная</option>
+      <option value="triad">Триада</option>
+      <option value="tetrad">Тетрада</option>
+    </select>
+    <button id="generateHarmonyBtn">Сгенерировать по гармонии</button>
+  </div>
+
   <h2>Понравившиеся палитры</h2>
   <div id="liked-palettes"></div>
   

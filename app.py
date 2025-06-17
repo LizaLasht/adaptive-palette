@@ -6,6 +6,7 @@ import numpy as np
 import cv2
 from sklearn.linear_model import LogisticRegression
 from sklearn.cluster import KMeans
+import colorsys
 
 app = Flask(__name__)
 os.makedirs('instance', exist_ok=True)
@@ -38,33 +39,50 @@ class Palette(db.Model):
     dislikes = db.Column(db.Integer, default=0)
 
 # Модель обратной связи
-
 class Feedback(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     palette_id = db.Column(db.Integer, db.ForeignKey('palette.id'))
-    liked = db.Column(db.Integer)  # 1 – лайк, 0 – дизлайк
-    features = db.Column(db.PickleType)  # сохраняем признаки для отладки
+    liked = db.Column(db.Integer) 
+    features = db.Column(db.PickleType) 
 
 # Генерация случайной палитры
 def generate_random_palette(n=5):
     return ['#{:02X}{:02X}{:02X}'.format(random.randint(0,255), random.randint(0,255), random.randint(0,255)) for _ in range(n)]
 
-# Преобразование палитры в признаки (нормализованные)
+# Преобразование палитры в признаки 
 def palette_to_features(colors):
-    features = []
-    for hex_color in colors:
-        r = int(hex_color[1:3], 16) / 255
-        g = int(hex_color[3:5], 16) / 255
-        b = int(hex_color[5:7], 16) / 255
-        features.extend([r, g, b])
+    hsv_colors = []
+
+    clean_colors = [c for c in colors if c]
+
+    for hex_color in clean_colors:
+        r = int(hex_color[1:3], 16) / 255.0
+        g = int(hex_color[3:5], 16) / 255.0
+        b = int(hex_color[5:7], 16) / 255.0
+        h, s, v = colorsys.rgb_to_hsv(r, g, b)
+        hsv_colors.append((h, s, v))
+
+    while len(hsv_colors) < 5:
+        hsv_colors.append((0.0, 0.0, 0.0))
+
+    hsv_colors.sort(key=lambda x: x[0])
+
+    features = [component for color in hsv_colors for component in color]
+
     return features
 
 # Обновление модели
 def update_model():
     global model, X_data, y_data
     feedbacks = Feedback.query.all()
-    X_data = [f.features for f in feedbacks]
-    y_data = [f.liked for f in feedbacks]
+    X_data = []
+    y_data = []
+
+    for f in feedbacks:
+        if isinstance(f.features, list) and len(f.features) == 15:
+            X_data.append(f.features)
+            y_data.append(f.liked)
+
     if len(set(y_data)) >= 2:
         model = LogisticRegression()
         model.fit(X_data, y_data)
@@ -75,14 +93,21 @@ def update_model():
 
 # Палитра из изображения
 def extract_palette_from_image(image_path, n_colors=5):
+    
     img = cv2.imread(image_path)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = cv2.resize(img, (100, 100))
-    pixels = img.reshape(-1, 3)
+    img_lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
+    pixels = img_lab.reshape((-1, 3))
+
     kmeans = KMeans(n_clusters=n_colors, random_state=42, n_init='auto')
     kmeans.fit(pixels)
-    colors = kmeans.cluster_centers_.astype(int)
-    return ['#{:02X}{:02X}{:02X}'.format(*c) for c in colors]
+    lab_colors = kmeans.cluster_centers_.astype(np.uint8)
+
+    rgb_colors = cv2.cvtColor(lab_colors[np.newaxis, :, :], cv2.COLOR_LAB2RGB)[0]
+
+    hex_colors = ['#{:02X}{:02X}{:02X}'.format(c[0], c[1], c[2]) for c in rgb_colors]
+    return hex_colors
 
 @app.route("/")
 def index():
@@ -133,7 +158,8 @@ def feedback():
         return jsonify({"error": "Palette not found"}), 404
 
     liked = 1 if feedback_type == "like" else 0
-    features = palette_to_features([palette.color1, palette.color2, palette.color3, palette.color4, palette.color5])
+    colors = [c for c in [palette.color1, palette.color2, palette.color3, palette.color4, palette.color5] if c]
+    features = palette_to_features(colors)
 
     if liked:
         palette.likes += 1
@@ -192,12 +218,88 @@ def liked_palettes():
     palettes = Palette.query.filter(Palette.id.in_(liked_ids)).all()
     result = [{
         "id": p.id,
-        "colors": [p.color1, p.color2, p.color3, p.color4, p.color5],
+        "colors": [c for c in [p.color1, p.color2, p.color3, p.color4, p.color5] if c],
         "likes": p.likes,
         "dislikes": p.dislikes,
         "image": f"/uploads/{p.image_path}" if p.image_path else None
+        
     } for p in palettes]
     return jsonify(result)
+
+@app.route("/generate_harmony", methods=["POST"])
+def generate_harmony():
+    data = request.get_json()
+    base_color = data.get("base_color")
+    scheme = data.get("scheme")
+    if not base_color or not scheme:
+        return jsonify({'error': 'Не указан базовый цвет или схема гармонии'}), 400
+
+    palette = generate_harmony_palette(base_color, scheme)
+    if palette is None:
+        return jsonify({'error': 'Неизвестная схема гармонии или некорректный цвет'}), 400
+
+    proba = None
+    if model and len(X_data) >= 15:
+        features = np.array([palette_to_features(palette)])
+        proba = model.predict_proba(features)[0][1]
+    else:
+        proba = None
+
+    padded = palette + [None] * (5 - len(palette))
+
+    pal = Palette(
+        color1=padded[0],
+        color2=padded[1],
+        color3=padded[2],
+        color4=padded[3],
+        color5=padded[4],
+        method='harmony'
+    )
+    db.session.add(pal)
+    db.session.commit()
+
+    return jsonify({
+        "palette_id": pal.id,
+        "colors": palette,
+        "proba": proba
+    })
+
+def generate_harmony_palette(base_color, scheme):
+    hex_color = base_color.lstrip('#')
+    if len(hex_color) != 6:
+        return None
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+
+    r_norm, g_norm, b_norm = r / 255.0, g / 255.0, b / 255.0
+    h, s, v = colorsys.rgb_to_hsv(r_norm, g_norm, b_norm)
+    base_hue = h * 360.0
+
+    scheme = scheme.lower()
+    if scheme == 'analogous':
+        offsets = [0, -30, 30]
+    elif scheme == 'complementary':
+        offsets = [0, 180]
+    elif scheme == 'triad':
+        offsets = [0, 120, 240]
+    elif scheme == 'tetrad':
+        offsets = [0, 90, 180, 270]
+    else:
+        return None
+
+    palette = []
+    for offset in offsets:
+        new_hue = (base_hue + offset) % 360
+        h_norm = new_hue / 360.0
+        r_new, g_new, b_new = colorsys.hsv_to_rgb(h_norm, s, v)
+        r_new = int(r_new * 255)
+        g_new = int(g_new * 255)
+        b_new = int(b_new * 255)
+        hex_new = '#{:02X}{:02X}{:02X}'.format(r_new, g_new, b_new)
+        palette.append(hex_new)
+
+    return palette
 
 if __name__ == "__main__":
     db_path = os.path.abspath("instance/palettes.db")
@@ -221,13 +323,3 @@ if __name__ == "__main__":
         print("✅ База данных заново создана и модель обновлена")
 
     app.run(debug=True, use_reloader=False)
-
-
-
-
-
-
-
-
-
-    

@@ -83,7 +83,7 @@ document.getElementById("upload-form").addEventListener("submit", function (e) {
         showUploadedSection(data.image);
       }
 
-      loadTopPalettes();
+      loadLikedPalettes(); 
     })
     .catch(err => console.error("Ошибка загрузки изображения:", err));
 });
@@ -119,17 +119,20 @@ function loadLikedPalettes(showAll = false) {
 
         const bar = document.createElement("div");
         bar.style.display = "flex";
-        p.colors.forEach(c => {
-          const cdiv = document.createElement("div");
-          cdiv.className = "color-square";
-          cdiv.style.backgroundColor = c;
+        p.colors
+          .filter(c => c && c.startsWith("#"))
+          .forEach(c => {
+            const cdiv = document.createElement("div");
+            cdiv.className = "color-square";
+            cdiv.style.backgroundColor = c;
 
-          const span = document.createElement("span");
-          span.textContent = c;
+            const span = document.createElement("span");
+            span.textContent = c;
 
-          cdiv.appendChild(span);
-          bar.appendChild(cdiv);
+            cdiv.appendChild(span);
+            bar.appendChild(cdiv);
         });
+
         div.appendChild(bar);
 
         const info = document.createElement("p");
@@ -158,6 +161,56 @@ function loadLikedPalettes(showAll = false) {
     .catch(err => {
       console.error("Ошибка загрузки понравившихся палитр:", err);
     });
+}
+
+// Синхронизация цветового поля и HEX
+const baseColorHexInput = document.getElementById('baseColorHex');
+const baseColorPicker = document.getElementById('baseColorPicker');
+
+if (baseColorHexInput && baseColorPicker) {
+  baseColorPicker.addEventListener('input', () => {
+    baseColorHexInput.value = baseColorPicker.value.toUpperCase();
+  });
+  baseColorHexInput.addEventListener('input', () => {
+    let val = baseColorHexInput.value;
+    if (!val.startsWith('#')) val = '#' + val;
+    if (/^#([0-9A-Fa-f]{6})$/.test(val)) {
+      baseColorPicker.value = val;
+    }
+  });
+}
+
+// Сгенерировать по гармонии
+const harmonyBtn = document.getElementById('generateHarmonyBtn');
+if (harmonyBtn) {
+  harmonyBtn.addEventListener('click', () => {
+    const baseColor = baseColorHexInput.value;
+    const scheme = document.getElementById('schemeSelect').value;
+
+    fetch('/generate_harmony', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base_color: baseColor, scheme: scheme })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.colors) {
+          displayPalette(data.colors);
+          currentPaletteId = data.palette_id; 
+
+          const probaText = data.proba === null || data.proba === undefined
+            ? "💡 Чем больше вы оцените палитр, тем точнее мы сможем предсказывать ваши предпочтения!"
+            : "Вероятность лайка: " + (data.proba * 100).toFixed(1) + "%";
+
+          document.getElementById("proba-display").innerText = probaText;
+        } else {
+          alert("Ошибка генерации палитры: " + (data.error || "неизвестная ошибка"));
+        }
+      })
+      .catch(err => {
+        console.error("Ошибка запроса к /generate_harmony:", err);
+      });
+  });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
