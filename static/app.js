@@ -223,7 +223,7 @@ function showUploadedSection(imageUrl) {
   const img = document.getElementById("uploaded-image");
 
   if (section && img) {
-    img.src = imageUrl;
+    img.src = `${imageUrl}?t=${new Date().getTime()}`;
     section.style.display = "block";
     img.style.display = "block"; 
   }
