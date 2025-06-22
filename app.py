@@ -47,8 +47,21 @@ class Feedback(db.Model):
 
 # Генерация случайной палитры
 def generate_random_palette(n=5):
-    return ['#{:02X}{:02X}{:02X}'.format(random.randint(0,255), random.randint(0,255), random.randint(0,255)) for _ in range(n)]
+    generated = set()
+    palette = []
 
+    while len(palette) < n:
+        color = '#{:02X}{:02X}{:02X}'.format(
+            random.randint(0, 255),
+            random.randint(0, 255),
+            random.randint(0, 255)
+        )
+        if color not in generated:
+            generated.add(color)
+            palette.append(color)
+
+    return palette
+    
 # Преобразование палитры в признаки 
 def palette_to_features(colors):
     hsv_colors = []
